@@ -1,0 +1,58 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: 4417ce77e4cc4cdd9270c8a57d76d67f
+      name: Templates/Custom
+  templates:
+    - uuid: 4991cafb5ff34e6395e83d6816d44a93
+      template: macOS_check_provisionprofile_date_expiration
+      name: macOS_check_provisionprofile_date_expiration
+      groups:
+        - name: Templates/Custom
+      discovery_rules:
+        - uuid: 70fd3ed5d5ad4071b5e618f37fd5542d
+          name: 'File Discovery Rule'
+          key: file.discovery
+          delay: 1h
+          item_prototypes:
+            - uuid: 7241b7dbb2aa48d4bc782bca4ac0f29a
+              name: 'Provisioning {#FILENAME} Expiration Date'
+              type: DEPENDENT
+              key: 'prov.name.date[{#FILENAME}]'
+              delay: '0'
+              units: unixtime
+              description: 'Get expiration date for each provisioning profile.'
+              preprocessing:
+                - type: REGEX
+                  parameters:
+                    - 'expdate = ([^;]*)'
+                    - \0
+                - type: TRIM
+                  parameters:
+                    - 'expdate ='
+                - type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var dateStr = value;
+                      var dateObj = new Date(dateStr);
+                      return Math.floor(dateObj.getTime() / 1000);
+              master_item:
+                key: 'vfs.file.contents[/var/log/zabbix/output/{#FILENAME}]'
+              trigger_prototypes:
+                - uuid: 59492c02f1f644258ed8dfed75175e61
+                  expression: '((last(/macOS_check_provisionprofile_date_expiration/prov.name.date[{#FILENAME}]))- now()) / 86400 < 30'
+                  name: 'Provisioning {#FILENAME} expires less than in 30 days'
+                  priority: HIGH
+                  description: 'Raise alert when number days remaining is less than 30 days'
+            - uuid: b3388b4820b443afb0fd8e7ed9167494
+              name: 'File contents of {#FILENAME}'
+              key: 'vfs.file.contents[/var/log/zabbix/output/{#FILENAME}]'
+              trends: '0'
+              value_type: TEXT
+              description: |
+                Get content from files on the path "/var/log/zabbix/output/".
+                Files were created by shell script "discover_files.sh".
+              preprocessing:
+                - type: TRIM
+                  parameters:
+                    - expdate.
