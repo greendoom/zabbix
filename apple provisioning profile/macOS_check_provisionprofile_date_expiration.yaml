@@ -39,11 +39,19 @@ zabbix_export:
               master_item:
                 key: 'vfs.file.contents[/var/log/zabbix/output/{#FILENAME}]'
               trigger_prototypes:
+                - uuid: e456c16fb7cb44f78374bdd2b8e63f7b
+                  expression: '((last(/macOS_check_provisionprofile_date_expiration/prov.name.date[{#FILENAME}]))- now()) / 86400 < 0'
+                  name: 'Provisioning {#FILENAME} expired'
+                  priority: HIGH
+                  description: 'Raise alert when provisioning profile expired.'
                 - uuid: 59492c02f1f644258ed8dfed75175e61
                   expression: '((last(/macOS_check_provisionprofile_date_expiration/prov.name.date[{#FILENAME}]))- now()) / 86400 < 30'
                   name: 'Provisioning {#FILENAME} expires less than in 30 days'
-                  priority: HIGH
+                  priority: AVERAGE
                   description: 'Raise alert when number days remaining is less than 30 days'
+                  dependencies:
+                    - name: 'Provisioning {#FILENAME} expired'
+                      expression: '((last(/macOS_check_provisionprofile_date_expiration/prov.name.date[{#FILENAME}]))- now()) / 86400 < 0'
             - uuid: b3388b4820b443afb0fd8e7ed9167494
               name: 'File contents of {#FILENAME}'
               key: 'vfs.file.contents[/var/log/zabbix/output/{#FILENAME}]'

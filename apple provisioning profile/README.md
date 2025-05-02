@@ -19,7 +19,7 @@ expdate = 2030-01-10T10:05:10Z;
 ```
 2. Shell script "parse_prov.sh" takes content from the previous step files and brings it to the zabbix server.
 
-3. Template "macOS_check_provisionprofile_date_expiration.yaml" creates item with the name of provisioning profile, item with expiration date of each provisioning profile and trigger for each provisioning profile with message 'Provisioning {#FILENAME} expires less than in 30 days'.
+3. Template "macOS_check_provisionprofile_date_expiration.yaml" creates item with the name of provisioning profile, item with expiration date of each provisioning profile and trigger for each provisioning profile with message 'Provisioning {#FILENAME} expires less than in 30 days' and trigger with message 'Provisioning {#FILENAME} expired'.
 4. If you add new provisioning profile, new items and triggers will be created for them. Also old dates of expiration will be updated with update of profiles.
 
 ## Setup:
@@ -36,3 +36,18 @@ UserParameter=file.discovery,/scripts/discover_files.sh
 ```
 5. Restart zabbix agent.
 6. Import the template "macOS_check_provisionprofile_date_expiration.yaml" to your zabbix server and attach it to the macOS host.
+
+## Items:
+
+|Name|Description|Type|Key and additional info|
+|----|-----------|----|----|
+|File contents of {#FILENAME}|Get content from files on the path "/var/log/zabbix/output/". Files were created by shell script "discover_files.sh".|Zabbix agent|vfs.file.contents[/var/log/zabbix/output/{#FILENAME}], Update interval: 1m|
+|Provisioning {#FILENAME} Expiration Date|Get expiration date for each provisioning profile.|Dependent item|prov.name.date[{#FILENAME}], Units: unixtime|
+
+## Triggers:
+
+
+|Name|Description|Expression|Severity|
+|----|-----------|----------|--------|
+|Provisioning {#FILENAME} expires less than in 30 days|Raise alert when number days remaining is less than 30 days|((last(/macOS_check_provisionprofile_date_expiration/prov.name.date[{#FILENAME}]))- now()) / 86400 < 30|Average|
+|Provisioning {#FILENAME} expired|Raise alert when provisioning profile expired.|((last(/macOS_check_provisionprofile_date_expiration/prov.name.date[{#FILENAME}]))- now()) / 86400 < 0|High|
